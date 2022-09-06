@@ -115,8 +115,8 @@ class SDServerHandler(BaseHTTPRequestHandler):
                       image.save(img_file, format='PNG')
                       uid = uuid.uuid4().hex
                       s3_object = s3.Object('dadnetstack-dadnetpub3bbffde7-1jvjidlutslm', f'sd/{uid}.png')
-                      s3_object.put(Body=img_file.getvalue(), Metadata={'Content-Type': 'image/png'})
-                      self.wfile.write(bytes(json.dumps({'id': uid}), 'utf8'))
+                      s3_object.put(Body=img_file.getvalue(), ContentType='image/png')
+                      self.wfile.write(bytes(json.dumps({'id': uid, 'uri': f'https://dadnetstack-dadnetpub3bbffde7-1jvjidlutslm.s3.amazonaws.com/sd/{uid}.png'}), 'utf8'))
     finally:
       torch.cuda.empty_cache()
       torch.cuda.ipc_collect()
