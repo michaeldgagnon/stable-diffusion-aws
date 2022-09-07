@@ -93,8 +93,8 @@ class SDServerHandler(BaseHTTPRequestHandler):
       scale = get_query_arg(post_data, 'scale', default_scale)
       steps = get_query_arg(post_data, 'steps', default_steps)
       sampler_type = get_query_arg(post_data, 'sampler', 'plms')
-      seed = get_query_arg(post_data, 'seed', -1)
-      if (seed == -1):
+      seed = get_query_arg(post_data, 'seed', 0)
+      if (seed == 0):
         seed = random.randrange(0, np.iinfo(np.uint32).max)
       seed_everything(seed)
 
@@ -149,7 +149,7 @@ class SDServerHandler(BaseHTTPRequestHandler):
                       uid = uuid.uuid4().hex
                       s3_object = s3.Object(s3_bucket, f'sd/{uid}.png')
                       s3_object.put(Body=img_file.getvalue(), ContentType='image/png')
-                      self.wfile.write(bytes(json.dumps({'id': uid, 'uri': f'https://{s3_bucket}.s3.amazonaws.com/sd/{uid}.png'}), 'utf8'))
+                      self.wfile.write(bytes(json.dumps({'id': uid, 'seed': seed, 'uri': f'https://{s3_bucket}.s3.amazonaws.com/sd/{uid}.png'}), 'utf8'))
     finally:
       torch.cuda.empty_cache()
       torch.cuda.ipc_collect()
