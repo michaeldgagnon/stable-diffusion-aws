@@ -13,8 +13,10 @@ from contextlib import contextmanager, nullcontext
 from ldm.util import instantiate_from_config
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler
+from ldm.models.diffusion.ksampler import KSampler
 import boto3
 import json
+import random
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 def load_model_from_config(config, ckpt, verbose=False):
@@ -39,6 +41,7 @@ aws_session = boto3.Session(
   aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
   aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY')
 )
+s3_bucket = os.environ.get('AWS_S3_BUCKET')
 s3 = aws_session.resource('s3')
 
 seed_everything(42)
@@ -46,7 +49,14 @@ config = OmegaConf.load("configs/stable-diffusion/v1-inference.yaml")
 model = load_model_from_config(config, "models/ldm/stable-diffusion-v1/model.ckpt")
 device = torch.device("cuda")
 model = model.to(device)
-sampler = PLMSSampler(model)
+sampler_ddim = DDIMSampler(model)
+sampler_plms = PLMSSampler(model)
+sampler_kdpm2 = KSampler(model, 'dpm_2')
+sampler_kdpm2_a = KSampler(model, 'dpm_2_ancestral')
+sampler_keuler = KSampler(model, 'euler')
+sampler_keuler_a = KSampler(model, 'euler_ancestral')
+sampler_kheun = KSampler(model, 'heun')
+sampler_klms = KSampler(model, 'lms')
 n_samples = 1
 precision_scope = autocast
 ddim_eta = 0.0
@@ -82,7 +92,30 @@ class SDServerHandler(BaseHTTPRequestHandler):
       H = get_query_arg(post_data, 'H', default_H)
       scale = get_query_arg(post_data, 'scale', default_scale)
       steps = get_query_arg(post_data, 'steps', default_steps)
+      sampler_type = get_query_arg(post_data, 'sampler', 'plms')
+      seed = get_query_arg(post_data, 'seed', -1)
+      if (seed == -1):
+        seed = random.randrange(0, np.iinfo(np.uint32).max)
+      seed_everything(seed)
 
+      sampler = sampler_plms
+      if sampler_type == 'ddim':
+        sampler = sampler_ddim
+      elif sampler_type == 'plms':
+        sampler = sampler_plms
+      elif sampler_type == 'k_dpm_2_a':
+        sampler = sampler_kdpm2_a
+      elif sampler_type == 'k_dpm_2':
+        sampler = sampler_kdpm2
+      elif sampler_type == 'k_euler_a':
+        sampler = sampler_keuler_a
+      elif sampler_type == 'k_euler':
+        sampler = sampler_keuler
+      elif sampler_type == 'k_heun':
+        sampler = sampler_kheun
+      elif sampler_type == 'k_lms':
+        sampler = sampler_klms
+        
       data = [n_samples * [prompt]]
       with torch.no_grad():
           with precision_scope("cuda"):
@@ -114,9 +147,9 @@ class SDServerHandler(BaseHTTPRequestHandler):
                       img_file = io.BytesIO()
                       image.save(img_file, format='PNG')
                       uid = uuid.uuid4().hex
-                      s3_object = s3.Object('dadnetstack-dadnetpub3bbffde7-1jvjidlutslm', f'sd/{uid}.png')
+                      s3_object = s3.Object(s3_bucket, f'sd/{uid}.png')
                       s3_object.put(Body=img_file.getvalue(), ContentType='image/png')
-                      self.wfile.write(bytes(json.dumps({'id': uid, 'uri': f'https://dadnetstack-dadnetpub3bbffde7-1jvjidlutslm.s3.amazonaws.com/sd/{uid}.png'}), 'utf8'))
+                      self.wfile.write(bytes(json.dumps({'id': uid, 'uri': f'https://{s3_bucket}.s3.amazonaws.com/sd/{uid}.png'}), 'utf8'))
     finally:
       torch.cuda.empty_cache()
       torch.cuda.ipc_collect()
