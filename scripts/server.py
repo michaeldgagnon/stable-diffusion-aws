@@ -44,7 +44,7 @@ s3 = aws_session.resource('s3')
 sqs = boto3.resource('sqs', region_name='us-east-1')
 queue = sqs.get_queue_by_name(QueueName='DadnetStack-SDJob558630A1-mDFvpxTGLuMQ')
 
-seed_everything(42)
+seed_everything(random.randrange(0, np.iinfo(np.uint32).max))
 config = OmegaConf.load("configs/stable-diffusion/v1-inference.yaml")
 model = load_model_from_config(config, "models/ldm/stable-diffusion-v1/model.ckpt")
 device = torch.device("cuda")
