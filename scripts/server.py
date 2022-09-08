@@ -1,4 +1,3 @@
-import uuid
 import os
 import torch
 import numpy as np
@@ -80,7 +79,8 @@ def get_query_arg(post_data, arg, default_value):
 for message in queue.receive_messages(MaxNumberOfMessages=1, WaitTimeSeconds=20):
   try:
     job_req = json.loads(message.body)
-    print('Starting: ' + job_req['id'])
+    jid = job_req['id']
+    print(f'Starting: {jid}')
     prompt = job_req['prompt']
     W = get_query_arg(job_req, 'W', default_W)
     H = get_query_arg(job_req, 'H', default_H)
@@ -141,10 +141,9 @@ for message in queue.receive_messages(MaxNumberOfMessages=1, WaitTimeSeconds=20)
                     image = Image.fromarray(x_sample.astype(np.uint8))
                     img_file = io.BytesIO()
                     image.save(img_file, format='PNG')
-                    uid = uuid.uuid4().hex
-                    s3_object = s3.Object(s3_bucket, f'sd/{uid}.png')
+                    s3_object = s3.Object(s3_bucket, f'sd/{jid}.png')
                     s3_object.put(Body=img_file.getvalue(), ContentType='image/png')
   finally:
     torch.cuda.empty_cache()
     torch.cuda.ipc_collect()
-    print('Completed: ' + job_req['id'])
+    print(f'Completed: {jid}')
