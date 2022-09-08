@@ -77,7 +77,7 @@ def get_query_arg(post_data, arg, default_value):
   else:
     return default_value
 
-for message in queue.receive_messages(MaxNumberOfMessages=1, WaitTimeSeconds=120):
+for message in queue.receive_messages(MaxNumberOfMessages=1, WaitTimeSeconds=20):
   try:
     job_req = json.loads(message.body)
     print('Starting: ' + job_req['id'])
