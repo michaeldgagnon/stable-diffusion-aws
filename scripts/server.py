@@ -143,6 +143,7 @@ for message in queue.receive_messages(MaxNumberOfMessages=1, WaitTimeSeconds=20)
                     image.save(img_file, format='PNG')
                     s3_object = s3.Object(s3_bucket, f'sd/{jid}.png')
                     s3_object.put(Body=img_file.getvalue(), ContentType='image/png')
+    message.delete()
   finally:
     torch.cuda.empty_cache()
     torch.cuda.ipc_collect()
