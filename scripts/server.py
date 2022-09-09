@@ -42,7 +42,7 @@ aws_session = boto3.Session(
 s3_bucket = os.environ.get('AWS_S3_BUCKET')
 s3 = aws_session.resource('s3')
 sqs = boto3.resource('sqs', region_name='us-east-1')
-queue = sqs.get_queue_by_name(QueueName=os.environ.get('SQS_QUEUE'))
+queue = sqs.get_queue_by_name(QueueName=os.environ.get('AWS_SQS_QUEUE'))
 
 seed_everything(random.randrange(0, np.iinfo(np.uint32).max))
 config = OmegaConf.load("configs/stable-diffusion/v1-inference.yaml")
